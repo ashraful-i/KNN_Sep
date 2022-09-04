@@ -1,0 +1,6 @@
+{
+  "dataset_name": "heart_failure_clinical_records_dataset.csv",
+  "sep": ",",
+  "classification": true,
+  "class_col": -1
+}
