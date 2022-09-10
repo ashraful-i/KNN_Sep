@@ -1,6 +1,7 @@
 {
-  "dataset_name": "heart_failure_clinical_records_dataset.csv",
+  "dataset_name": "haberman.data",
   "sep": ",",
+  "head": "None",
   "classification": true,
   "class_col": -1
 }
