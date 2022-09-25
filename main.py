@@ -7,6 +7,8 @@ import json
 
 
 def read_data(dataset: pd.DataFrame, sep, header):
+
+
     if not header:
         df = pd.read_csv(dataset, sep=sep, header=None)
     else:
@@ -49,7 +51,7 @@ def get_avg_point(tl, n):
     return avg_points
 
 
-def get_grp_point(dataset, n, test_points, div=False):
+def get_grp_point(dataset, n, test_points, diff):
     if dataset.empty:
         return
     avg_dis = 0
@@ -70,30 +72,31 @@ def get_grp_point(dataset, n, test_points, div=False):
         test_list1[min_idx].append(i)
     # print(test_list)
     divided_grps = test_list1
-    if div:
-        return
+
     avg_pts = get_avg_point(test_list1, n)
     _list = []
     for item in avg_pts:
         _list.append(item.to_dict())
     avg_pts_tt = pd.DataFrame(_list)
-
+    total_dis = 0
     for x in range(n):
         for index, row1 in test_points.iloc[[0]].iterrows():
             for index2, row2 in avg_pts_tt.iloc[[x]].iterrows():
                 dis = euclidean_distance(row1, row2, cols)
+                total_dis += dis
                 # print(dis)
-                if dis < 1:
-                    test_list = avg_pts_tt
-                    return
-    get_grp_point(dataset, n, avg_pts_tt)
+    #print(total_dis)
+    if abs(total_dis - diff) < 1:
+        test_list = avg_pts_tt
+        return
+    get_grp_point(dataset, n, avg_pts_tt, total_dis)
 
 
 
 def knn(df_knn: pd.DataFrame, group_cnt):
     global test_list
     # print(df_knn[:][group_cnt:])
-    get_grp_point(df_knn[:][group_cnt:], group_cnt, df_knn[:][:group_cnt])
+    get_grp_point(df_knn[:][group_cnt:], group_cnt, df_knn[:][:group_cnt], 10000)
     optimum_points = test_list
     #print(optimum_points)
     return optimum_points
@@ -126,6 +129,31 @@ def check_test_set(df_knn_test: pd.DataFrame, points: pd.DataFrame, class_col, c
     print("Accuracy " + str(percentage) + "%")
 
 
+def check_val(t_set:pd.DataFrame, g_points):
+    print("Total test_set length = "+str(len(t_set)))
+    print(test_set)
+    cols = t_set.columns.values.tolist()
+    while True:
+        distance_min = sys.maxsize
+        val = input("Enter test_set index: ")
+        i_val = int(val)
+        #print(val)
+        if i_val < 0:
+            break
+        print(t_set.iloc[[val]])
+
+        for cnt_points, j in g_points.iterrows():
+            dis = euclidean_distance(t_set.iloc[[val]], j, cols)
+            print(cnt_points, dis)
+            if dis < distance_min:
+                distance_min = dis
+                result_grp = j
+                result_idx = cnt_points
+
+        print(result_idx)
+
+
+
 if __name__ == '__main__':
     config_file = open('config.json')
     config = json.load(config_file)
@@ -142,35 +170,20 @@ if __name__ == '__main__':
     else:
         df = read_data(dataset, seperator, "Y")
 
-    print(df)
-    if config['class_col'] == -1:
-        colname = df.columns[-1]
-        #print(colname)
-        first_column = df.pop(colname)
-        df.insert(0, colname, first_column)
-    print(df)
+
     split_times = 1
-    num_of_grp = len(df.columns)
+    num_of_grp_v = input("Enter Number of groups: ")
+    num_of_grp = int(num_of_grp_v)
+
     # num_of_grp = 10
     for x in range(split_times):
         print("Start")
         train_set, test_set = split_dataset(df, x)
-        classification = config['classification']
-        class_col_name = train_set.columns[0]
-        print(class_col_name)
+        #classification = config['classification']
         df_all_points = pd.DataFrame()
-        if classification:
-            df_class = train_set.groupby([class_col_name])
-            print(df_class.groups.keys())
-            for name, df_group in df_class:
-                # print(df_group)
-                group_pnts = knn(df_group, num_of_grp - 1)
+        group_pnts = knn(train_set, num_of_grp)
+        print(group_pnts)
+        check_val(test_set, group_pnts)
 
-                df_all_points = pd.concat([df_all_points, group_pnts], ignore_index=True)
-        else:
-            print("nn")
-        # print(df_all_points)
-
-        if classification:
-            check_test_set(test_set, df_all_points, 0, class_col_name)
+        #check_test_set(test_set, df_all_points, 0, class_col_name)
     print("End")
